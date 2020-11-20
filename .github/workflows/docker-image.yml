@@ -10,10 +10,8 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v2
-    - name: Save the day
-      run: DATE=$(date +%Y-%m-%d-'T'-%H-%M-%S)
     - name: Build and push
       uses: docker/build-push-action@v2
       with:
         push: true
-        tags: ghcr.io/jarppe/netspect:latest,ghcr.io/jarppe/netspect:${DATE}
+        tags: ghcr.io/jarppe/netspect:latest
