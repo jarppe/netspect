@@ -14,8 +14,8 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag netspect:latest
     - name: Tag with date
-      run: docker tag netspect:latest netspect:$DATE
+      run: docker tag ghcr.io/jarppe/netspect:latest netspect:$DATE
     - name: Push latest
-      run: docker push netspect:latest
+      run: docker push ghcr.io/jarppe/netspect:latest
     - name: Push dated
-      run: docker push netspect:$DATE
+      run: docker push ghcr.io/jarppe/netspect:$DATE
