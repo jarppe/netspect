@@ -14,7 +14,7 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         load: true
-        tags: ghcr.io/jarppe/netspect:latest
+        tags: docker.pkg.github.com/jarppe/netspect:latest
     - name: Inspect
-      run: docker image inspect ghcr.io/jarppe/netspect:latest
+      run: docker image inspect docker.pkg.github.com/jarppe/netspect:latest
   
