@@ -11,11 +11,11 @@ jobs:
     - uses: actions/checkout@v2
     - name: Save date
       run: DATE=$(date +%Y-%m-%d-'T'-%H-%M-%S)
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag netspect:latest
-    - name: Tag with date
-      run: docker tag ghcr.io/jarppe/netspect:latest netspect:$DATE
-    - name: Push latest
+    - name: Build image
+      run: docker build . --file Dockerfile --tag ghcr.io/jarppe/netspect:latest
+    - name: Push image
       run: docker push ghcr.io/jarppe/netspect:latest
+    - name: Tag with date
+      run: docker tag ghcr.io/jarppe/netspect:latest ghcr.io/jarppe/netspect:$DATE
     - name: Push dated
       run: docker push ghcr.io/jarppe/netspect:$DATE
