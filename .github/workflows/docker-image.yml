@@ -1,0 +1,21 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: debian:10-slim
+    steps:
+    - uses: actions/checkout@v2
+    - name: Save date
+      run: DATE=$(date +%Y-%m-%d-'T'-%H-%M-%S)
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag netspect:latest
+    - name: Tag with date
+      run: docker tag netspect:latest netspect:$DATE
+    - name: Push latest
+      run: docker push netspect:latest
+    - name: Push dated
+      run: docker push netspect:$DATE
