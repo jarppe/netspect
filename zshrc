@@ -33,11 +33,12 @@ alias k=kubectl
 complete -F __start_kubectl k
 
 # GCP CLI
-export CLOUDSDK_PYTHON=/usr/bin/python3.7
 source /usr/share/google-cloud-sdk/completion.zsh.inc
 
 # AWS CLI
 complete -C '/usr/local/bin/aws_completer' aws
+
+# Some aliases:
 
 alias l='exa'
 alias ll='exa -l'

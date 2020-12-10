@@ -1,5 +1,29 @@
 FROM debian:10-slim
 
+# Upggrade base:
+
+RUN apt -qq update                                                                 && \
+    apt -qq upgrade -y
+
+
+# tini:
+
+RUN apt -qq install -y gpg
+
+ENV TINI_VERSION v0.19.0
+ENV TINI_URL https://github.com/krallin/tini/releases/download
+ADD ${TINI_URL}/${TINI_VERSION}/tini /tini
+ADD ${TINI_URL}/${TINI_VERSION}/tini.asc /tini.asc
+RUN gpg --batch                                                                    \
+        --keyserver hkp://p80.pool.sks-keyservers.net:80                           \
+        --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7                       && \
+    gpg --batch                                                                    \
+        --verify /tini.asc                                                         \
+        /tini                                                                      && \
+    chmod +x /tini
+ENTRYPOINT ["/tini", "--"]
+
+
 # Base tools, these are required for Docker, AWS CLI, GCP CLI, etc:
 
 RUN apt -qq update                                                                 && \
@@ -13,6 +37,7 @@ RUN apt -qq update                                                              
         python3.7                                                                  \
         python3-pip
 
+
 # Docker:
 
 RUN curl -fsSL https://download.docker.com/linux/debian/gpg                        \
@@ -24,6 +49,7 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg                     
     apt update                                                                     && \
     apt install -y docker-ce-cli
 
+
 # kubectl and kubectx
 
 RUN KR=https://storage.googleapis.com/kubernetes-release/release                   && \
@@ -33,26 +59,30 @@ RUN KR=https://storage.googleapis.com/kubernetes-release/release                
 
 RUN apt install -y kubectx
 
+
 # Install AWS CLI:
 
 RUN python3 -m pip install setuptools                                              \
                            awscli                                                  && \
     aws configure set default.region eu-west-1
 
+
 # GCP CLI:
 
 RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main"    \
-      | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list                      && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg                    \
-      | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add -             && \
-    apt -qq update -y                                                             && \
+      | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list                       && \
+    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg                     \
+      | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add -              && \
+    apt -qq update -y                                                              && \
     apt -qq install -y google-cloud-sdk
-      
+
+
 # Install python libs for httpie:
 
 RUN python3 -m pip install urllib3                                                 \
                            chardet                                                 \
                            requests
+
 
 # Misc tools, install after heavy ones above:
 
@@ -76,10 +106,12 @@ RUN apt update &&                     \
         direnv                        \
         procps
 
+
 # tcping
 
 ADD http://www.vdberg.org/~richard/tcpping /bin/tcpping
 RUN chmod +x /bin/tcpping
+
 
 # Image labels:
 
@@ -96,6 +128,7 @@ LABEL org.label-schema.description="Simple image with network and DevOps tools"
 LABEL org.label-schema.vendor="Jarppe"
 LABEL org.label-schema.url="https://github.com/jarppe/netspect"
 LABEL org.label-schema.build-date="${BUILD_DATE}"
+
 
 # My image, my preferences
 
