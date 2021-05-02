@@ -1,4 +1,4 @@
-FROM debian:10-slim
+FROM debian:bullseye-slim
 
 # Upggrade base:
 
@@ -34,7 +34,7 @@ RUN apt -qq update                                                              
         ca-certificates                                                            \
         software-properties-common                                                 \
         apt-transport-https                                                        \
-        python3.7                                                                  \
+        python3                                                                    \
         python3-pip
 
 
@@ -57,7 +57,8 @@ RUN KR=https://storage.googleapis.com/kubernetes-release/release                
     curl -o /usr/local/bin/kubectl -L "${KR}/${KRV}/bin/linux/amd64/kubectl"       && \
     chmod +x /usr/local/bin/kubectl
 
-RUN apt install -y kubectx
+# TODO: kubectx is not in bullseye repo
+# RUN apt install -y kubectx
 
 
 # Install AWS CLI:
