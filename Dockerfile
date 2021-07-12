@@ -13,14 +13,7 @@ RUN apt -qq install -y gpg
 ENV TINI_VERSION v0.19.0
 ENV TINI_URL https://github.com/krallin/tini/releases/download
 ADD ${TINI_URL}/${TINI_VERSION}/tini /tini
-ADD ${TINI_URL}/${TINI_VERSION}/tini.asc /tini.asc
-RUN gpg --batch                                                                    \
-        --keyserver hkp://p80.pool.sks-keyservers.net:80                           \
-        --recv-keys 595E85A6B1B4779EA4DAAEC70B588DFF0527A9B7                       && \
-    gpg --batch                                                                    \
-        --verify /tini.asc                                                         \
-        /tini                                                                      && \
-    chmod +x /tini
+RUN chmod +x /tini
 ENTRYPOINT ["/tini", "--"]
 
 
@@ -46,8 +39,8 @@ RUN curl -fsSL https://download.docker.com/linux/debian/gpg                     
       "deb [arch=amd64] https://download.docker.com/linux/debian                   \
       $(lsb_release -cs)                                                           \
       stable"                                                                      && \
-    apt update                                                                     && \
-    apt install -y docker-ce-cli
+    apt -qq update                                                                 && \
+    apt -qq install -y docker-ce-cli
 
 
 # kubectl and kubectx
@@ -87,8 +80,8 @@ RUN python3 -m pip install urllib3                                              
 
 # Misc tools, install after heavy ones above:
 
-RUN apt update &&                     \
-    apt install -y                    \
+RUN apt update -qq &&                 \
+    apt -qq install -y                \
         net-tools                     \
         inetutils-ping                \
         inetutils-telnet              \
@@ -112,6 +105,15 @@ RUN apt update &&                     \
 
 ADD http://www.vdberg.org/~richard/tcpping /bin/tcpping
 RUN chmod +x /bin/tcpping
+
+# mongosh
+
+RUN wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc                 \
+      | apt-key add -                                                            && \
+    echo "deb http://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main"    \
+      > /etc/apt/sources.list.d/mongodb-org-4.4.list                             && \
+    apt -qq update                                                               && \
+    apt -qq install -y mongodb-org-shell
 
 
 # Image labels:
