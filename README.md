@@ -1,58 +1,56 @@
 # Simple image with network and devops tools
 
-Contains:
+This image is based on [debian:bullseye-slim](https://hub.docker.com/_/debian). It includes commonly used tools and utilities for quick shell work, and
+some basic network related work.
+
+Some tools included are:
 
 * wget
 * curl
 * ping
-* telnet
 * httpie
+* telnet
 * tcptraceroute
 * mtr
-* ca-certificates
-* Python3.7 and pip
+* Python 3.7
 * Docker client
-* kubectl and kubectx
+* kubectl, kubectx, kubens, and kim
 * AWS CLI
 * GCP CLI
 * PostgreSQL client
 * zsh
+* git client
 
 ...and more.
 
+The user in image is `user:user` with uid 1000 and gid 1001. The default command is `zah`.
+
 ## Usage:
+
+Basic usage:
 
 ```bash
 $ docker run --rm -it jarppe/netspect
-[netspect]/> http ip.jsontest.com
-HTTP/1.1 200 OK
-Access-Control-Allow-Origin: *
-Content-Length: 24
-Content-Type: application/json
-Date: Sat, 05 Dec 2020 12:07:27 GMT
-Server: Google Frontend
-X-Cloud-Trace-Context: 6413facfbe4cb34d159cd030c181f91c
-
-{
-    "ip": "172.16.216.64"
-}
+[netspect]/> 
 ```
 
-The image is fairly large one. It's not intended to be a basde image for services.
+The image is fairly large one.
 
 ```bash
-$ docker run --rm -it jarppe/netspect docker image ls --filter label=name=jarppe/netspect
-REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
-jarppe/netspect     latest              1cc62de9069a        3 minutes ago       1.45GB
+$ docker image ls --filter label=name=jarppe/netspect
+REPOSITORY        TAG       IMAGE ID       CREATED         SIZE
+jarppe/netspect   latest    68b8a8b5882a   2 minutes ago   1.63GB
 ```
 
 ## TODO
 
-[ ] kim? (https://github.com/rancher/kim)
+[x] kim (https://github.com/rancher/kim)
 [ ] Multi-architecture image (https://github.com/docker/buildx#building-multi-platform-images)
+[ ] Help on AWS, GCP and Kube usage.
+
 
 ## License
 
-Copyright © 2020 Jarppe Länsiö.
+Copyright © 2021 Jarppe Länsiö.
 
 Available under the terms of the Eclipse Public License 2.0, see [LICENSE](./LICENSE)

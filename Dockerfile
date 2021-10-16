@@ -1,27 +1,31 @@
 FROM debian:bullseye-slim
 
-# Upggrade base:
+# Detect and save architecture for later reference:
 
-RUN apt -qq update                                                                 && \
-    apt -qq upgrade -y
+RUN \
+  ARCH=                                                                            && \
+  dpkgArch="$(dpkg --print-architecture)"                                          && \
+  case "${dpkgArch##*-}" in                                                        \
+    amd64)                                                                         \
+      ARCH='amd64';                                                                \
+      ;;                                                                           \
+    arm64)                                                                         \
+      ARCH='arm64';                                                                \
+      ;;                                                                           \
+    *)                                                                             \
+      echo "unsupported architecture";                                             \
+      exit 1                                                                       \
+      ;;                                                                           \
+  esac                                                                             && \
+  echo "$ARCH" > /etc/.arch
 
 
-# tini:
+# Upggrade base, install generic tools, these are required for Docker, AWS CLI, GCP CLI, etc:
 
-RUN apt -qq install -y gpg
-
-ENV TINI_VERSION v0.19.0
-ENV TINI_URL https://github.com/krallin/tini/releases/download
-ADD ${TINI_URL}/${TINI_VERSION}/tini /tini
-RUN chmod +x /tini
-ENTRYPOINT ["/tini", "--"]
-
-
-# Base tools, these are required for Docker, AWS CLI, GCP CLI, etc:
-
-RUN apt -qq update                                                                 && \
-    apt -qq upgrade -y                                                             && \
-    apt -qq install -y                                                             \
+RUN apt -q update                                                                  && \
+    apt -q upgrade -y                                                              && \
+    apt -q install -y                                                              \
+        gpg                                                                        \
         wget                                                                       \
         curl                                                                       \
         ca-certificates                                                            \
@@ -33,87 +37,104 @@ RUN apt -qq update                                                              
 
 # Docker:
 
-RUN curl -fsSL https://download.docker.com/linux/debian/gpg                        \
-      | apt-key add -                                                              && \
-    add-apt-repository                                                             \
-      "deb [arch=amd64] https://download.docker.com/linux/debian                   \
-      $(lsb_release -cs)                                                           \
-      stable"                                                                      && \
-    apt -qq update                                                                 && \
-    apt -qq install -y docker-ce-cli
+RUN \
+  ARCH=$(cat /etc/.arch)                                                           && \
+  curl -fsSL https://download.docker.com/linux/debian/gpg                          \
+    | apt-key add -                                                                && \
+  add-apt-repository "deb [arch=${ARCH}] https://download.docker.com/linux/debian $(lsb_release -cs) stable"  && \
+  apt -q update                                                                    && \
+  apt -q install -y docker-ce-cli
 
 
-# kubectl and kubectx
 
-RUN KR=https://storage.googleapis.com/kubernetes-release/release                   && \
-    KRV=$(curl -s ${KR}/stable.txt)                                                && \
-    curl -o /usr/local/bin/kubectl -L "${KR}/${KRV}/bin/linux/amd64/kubectl"       && \
-    chmod +x /usr/local/bin/kubectl
+# kubectl, kubectx, kubens, and kim
 
-# TODO: kubectx is not in bullseye repo
-# RUN apt install -y kubectx
+ARG KUBECTX_VER=0.9.4
+ARG KIM_VER=0.1.0-beta.6
 
+RUN \
+  ARCH=$(cat /etc/.arch)                                                           && \
+  KUBE_URL=https://storage.googleapis.com/kubernetes-release/release               && \
+  KUBE_VER=$(curl -s ${KUBE_URL}/stable.txt)                                       && \
+  curl -L "${KUBE_URL}/${KUBE_VER}/bin/linux/${ARCH}/kubectl"                      \
+       -o /usr/local/bin/kubectl                                                   && \
+  chmod +x /usr/local/bin/kubectl                                                  && \
+  CPU="${ARCH}"                                                                    && \
+  case "${CPU}" in amd64) CPU=x86_64;; esac                                        && \
+  curl -Ls "https://github.com/ahmetb/kubectx/releases/download/v${KUBECTX_VER}/kubectx_v${KUBECTX_VER}_linux_${CPU}.tar.gz"  \
+    | tar xzf - -C /usr/local/bin kubectx                                          && \
+  curl -Ls "https://github.com/ahmetb/kubectx/releases/download/v${KUBECTX_VER}/kubens_v${KUBECTX_VER}_linux_${CPU}.tar.gz"   \
+    | tar xzf - -C /usr/local/bin kubens                                           && \
+  curl -Ls "https://github.com/rancher/kim/releases/download/v${KIM_VER}/kim-linux-${ARCH}"  \
+       -o /usr/local/bin/kim                                                       && \
+  chmod +x /usr/local/bin/kim
 
-# Install AWS CLI:
+# Install AWS CLI, set default region:
 
-RUN python3 -m pip install setuptools                                              \
-                           awscli                                                  && \
-    aws configure set default.region eu-west-1
+ARG AWS_REGION=eu-west-1
+
+RUN \
+  python3 -m pip install setuptools awscli                                         && \
+  aws configure set default.region ${AWS_REGION}
 
 
 # GCP CLI:
 
-RUN echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main"    \
-      | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list                       && \
-    curl https://packages.cloud.google.com/apt/doc/apt-key.gpg                     \
-      | apt-key --keyring /usr/share/keyrings/cloud.google.gpg  add -              && \
-    apt -qq update -y                                                              && \
-    apt -qq install -y google-cloud-sdk
-
-
-# Install python libs for httpie:
-
-RUN python3 -m pip install urllib3                                                 \
-                           chardet                                                 \
-                           requests
+RUN \
+  curl -L https://packages.cloud.google.com/apt/doc/apt-key.gpg                    \
+    | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -                 && \
+  echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] http://packages.cloud.google.com/apt cloud-sdk main"    \
+    | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list                         && \
+  apt -q update -y                                                                 && \
+  apt -q install -y google-cloud-sdk
 
 
 # Misc tools, install after heavy ones above:
 
-RUN apt update -qq &&                 \
-    apt -qq install -y                \
-        net-tools                     \
-        inetutils-ping                \
-        inetutils-telnet              \
-        tcptraceroute                 \
-        bc                            \
-        httpie                        \
-        socat                         \
-        mtr                           \
-        gnupg                         \
-        gnupg-agent                   \
-        postgresql-client             \
-        jq                            \
-        git                           \
-        zsh                           \
-        exa                           \
-        direnv                        \
-        procps
+RUN \
+  apt -q update                                                                    && \
+  apt -q install -y                                                                \
+         net-tools                                                                 \
+         inetutils-ping                                                            \
+         inetutils-telnet                                                          \
+         tcptraceroute                                                             \
+         bc                                                                        \
+         httpie                                                                    \
+         socat                                                                     \
+         mtr                                                                       \
+         gnupg                                                                     \
+         gnupg-agent                                                               \
+         postgresql-client                                                         \
+         jq                                                                        \
+         git                                                                       \
+         zsh                                                                       \
+         exa                                                                       \
+         direnv                                                                    \
+         procps
 
 
 # tcping
 
-ADD http://www.vdberg.org/~richard/tcpping /bin/tcpping
-RUN chmod +x /bin/tcpping
+RUN \
+  curl -Ls http://www.vdberg.org/~richard/tcpping                                  \
+       -o /usr/local/bin/tcpping                                                   && \
+  chmod +x /usr/local/bin/tcpping
 
-# mongosh
 
-RUN wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc                 \
-      | apt-key add -                                                            && \
-    echo "deb http://repo.mongodb.org/apt/debian buster/mongodb-org/4.4 main"    \
-      > /etc/apt/sources.list.d/mongodb-org-4.4.list                             && \
-    apt -qq update                                                               && \
-    apt -qq install -y mongodb-org-shell
+# User:
+
+RUN groupadd -g 1001 user                                                          && \
+    useradd -u 1000 -g user -m user
+
+ENV HOME=/home/user
+WORKDIR /home/user
+USER user:user
+
+# My image, my preferences
+
+COPY ./zshenv  /home/user/.zshenv
+COPY ./zshrc   /home/user/.zshrc
+CMD ["zsh"]
 
 
 # Image labels:
@@ -131,10 +152,3 @@ LABEL org.label-schema.description="Simple image with network and DevOps tools"
 LABEL org.label-schema.vendor="Jarppe"
 LABEL org.label-schema.url="https://github.com/jarppe/netspect"
 LABEL org.label-schema.build-date="${BUILD_DATE}"
-
-
-# My image, my preferences
-
-COPY ./zshenv  /root/.zshenv
-COPY ./zshrc   /root/.zshrc
-CMD ["zsh"]
